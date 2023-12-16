@@ -1,0 +1,4 @@
+http://download.geofabrik.de/north-america/canada/ontario.html
+	- navigate site to download the region of the world you want to map
+https://github.com/AndGem/OsmToRoadGraph
+	- use this to convert osm data from first link into readable file for this program
