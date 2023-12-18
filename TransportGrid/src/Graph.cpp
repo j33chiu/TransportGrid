@@ -12,7 +12,7 @@ Graph::Graph() {
 
 }
 
-Node* Graph::createNode(const int id, const long double x, const long double y) {
+Node* Graph::createNode(const int id, const double x, const double y) {
     if (nodesMap.find(id) != nodesMap.end()) {
         // cannot create node as one already exists with the same id
         return nodesMap[id];
@@ -24,12 +24,12 @@ Node* Graph::createNode(const int id, const long double x, const long double y) 
     return n;
 }
 
-Node* Graph::createNode(const long double x, const long double y) {
+Node* Graph::createNode(const double x, const double y) {
     return createNode(node_id_count++, x, y);
 }
 
-long double Graph::add2WayEdge(Node* node1, Node* node2) {
-    long double dist = -1;
+double Graph::add2WayEdge(Node* node1, Node* node2) {
+    double dist = -1;
     if (std::find(node1->getNeighbours().begin(), node1->getNeighbours().end(), node2) == node1->getNeighbours().end()) {
         dist = node1->addNeighbour(node2);
     }
@@ -39,23 +39,23 @@ long double Graph::add2WayEdge(Node* node1, Node* node2) {
     return dist;
 }
 
-long double Graph::add2WayEdge(int node1Id, int node2Id) {
+double Graph::add2WayEdge(int node1Id, int node2Id) {
     return add2WayEdge(nodesMap[node1Id], nodesMap[node2Id]);
 }
 
-long double Graph::add1WayEdge(Node* from, Node* to) {
+double Graph::add1WayEdge(Node* from, Node* to) {
     return from->addNeighbour(to);
 }
 
-long double Graph::add1WayEdge(int node1Id, int node2Id) {
+double Graph::add1WayEdge(int node1Id, int node2Id) {
     return add1WayEdge(nodesMap[node1Id], nodesMap[node2Id]);
 }
 
-long double Graph::distBetween(Node* from, Node* to) {
+double Graph::distBetween(Node* from, Node* to) {
     return from->distTo(to);
 }
 
-long double Graph::distBetween(int fromId, int toId) {
+double Graph::distBetween(int fromId, int toId) {
     try {
         return distBetween(nodesMap.at(fromId), nodesMap.at(toId));
     } catch (const std::out_of_range& err) {
@@ -65,7 +65,7 @@ long double Graph::distBetween(int fromId, int toId) {
 }
 
 const std::deque<Node*> Graph::pathBetween(Node* from, Node* to) {
-    long double cost = distBetween(from, to);
+    double cost = distBetween(from, to);
     return Node::assemblePath(from, to);
 }
 
@@ -84,26 +84,22 @@ void Graph::calculateDistanceTable(std::vector<Node*> relevantNodes) {
 
     int relevantNodesOriginalSize = relevantNodes.size();
 
+    for (int i = 0; i < relevantNodes.size(); i++) {
+        relevantNodes[i]->setLookupTableIdx(i);
+    }
+    costTable = std::vector<std::vector<double>>(relevantNodes.size(), std::vector<double>(relevantNodes.size(), -1));
+
     while (!relevantNodes.empty()) {
         Node* n1 = relevantNodes[0];
         n1->explore(relevantNodes);
         for (Node* n2 : relevantNodes) {
             int n1Id = n1->getId();
             int n2Id = n2->getId();
-            long double cost = n2->getCost();
-            costMap[key(n1Id, n2Id)] = cost;
-            costMap[key(n2Id, n1Id)] = cost;
+            double cost = n2->getCost();
+            costTable[n1->getLookupTableIdx()][n2->getLookupTableIdx()] = cost;
+            costTable[n2->getLookupTableIdx()][n1->getLookupTableIdx()] = cost;
         }
         relevantNodes.erase(relevantNodes.begin() + 0);
-    }
-
-    long testSum = 0;
-    for (long i = relevantNodesOriginalSize; i >= 1; i--) {
-        testSum += (i*2);
-        testSum--;
-    }
-    if (costMap.size() != testSum) {
-        std::cout << "cost map issue" << std::endl;
     }
 }
 
@@ -120,11 +116,11 @@ void Graph::explore(Node* startNode) {
         Node* currentNode = pq.top();
         pq.pop();
         const std::vector<Node*>& neighbours = currentNode->getNeighbours();
-        const std::vector<long double>& distances = currentNode->getDistances();
+        const std::vector<double>& distances = currentNode->getDistances();
         for (int i = 0; i < neighbours.size(); i++) {
             Node* neighbourNode = neighbours[i];
-            long double neighbourDist = distances[i];
-            long double totalCost = currentNode->getCost() + neighbourDist;
+            double neighbourDist = distances[i];
+            double totalCost = currentNode->getCost() + neighbourDist;
             if (neighbourNode->getCost() > totalCost) {
                 neighbourNode->setCost(totalCost);
                 pq.push(neighbourNode);
@@ -134,43 +130,42 @@ void Graph::explore(Node* startNode) {
     }
 }
 
-long double Graph::getCost(Node* from, Node* to) {
+double Graph::getCost(Node* from, Node* to) const {
     try {
-        return costMap.at(key(from->getId(), to->getId()));
+        //return getCost(from->getId(), to->getId());
+        return costTable[from->getLookupTableIdx()][to->getLookupTableIdx()];
     } catch (const std::out_of_range& err) {
-        resetAllNodes();
-        long double cost = distBetween(from, to);
-        costMap[key(from->getId(), to->getId())] = cost;
-        return cost;
-    }
-}
-
-long double Graph::getCost(int fromId, int toId) {
-    try {
-        return getCost(nodesMap[fromId], nodesMap[toId]);
-    } catch(const std::out_of_range& err) {
         std::cout << "unable to find node with id" << std::endl;
         return -1;
     }
 }
 
-Node* Graph::getNodeById(int id) {
+double Graph::getCost(int fromId, int toId) const {
+    try {
+        return getCost(getNodeById(fromId), getNodeById(toId));
+    } catch (const std::out_of_range& err) {
+        std::cout << "unable to find node with id" << std::endl;
+        return -1;
+    }
+}
+
+Node* Graph::getNodeById(int id) const {
     try {
         return nodesMap.at(id);
     } catch(const std::out_of_range& err) {
         std::cout << "unable to find node with id " << id << std::endl;
-        return &defaultNode;
+        return nullptr;
     }
 }
 
-std::vector<Node*> Graph::getNodesById(std::vector<int>& ids) {
+std::vector<Node*> Graph::getNodesById(std::vector<int>& ids) const {
     std::vector<Node*> out;
     for (int id : ids) {
         try {
             out.push_back(nodesMap.at(id));
         } catch(const std::out_of_range& err) {
             std::cout << "unable to find node with id " << id << std::endl;
-            out.push_back(&defaultNode);
+            out.push_back(nullptr);
         }
     }
     return out;
@@ -188,7 +183,6 @@ void Graph::deleteGraph() {
     }
     nodesList.clear();
     nodesMap.clear();
-    costMap.clear();
     node_id_count = 0;
     //std::cout << "deleted graph" << std::endl;
 }
@@ -205,8 +199,8 @@ Graph::~Graph() {
     deleteGraph();
 }
 
-bool Graph::isClose(long double a, long double b) {
+bool Graph::isClose(double a, double b) {
     return std::fabs(a - b) < e;
 }
 
-const long double Graph::e = 10e-9;
+const double Graph::e = 10e-9;

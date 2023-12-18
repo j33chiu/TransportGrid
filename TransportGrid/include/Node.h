@@ -5,55 +5,58 @@
 #include <random>
 #include <unordered_map>
 
-const static long double NODE_MAX_VALUE = 1000000000.0;
+const static double NODE_MAX_VALUE = 1000000000.0;
 class Node {
 public:
-    Node(int id, long double x, long double y);
+    Node(int id, double x, double y);
 
     // add a neighbour to the node
-    long double addNeighbour(Node* neighbour);
-    void addNeighbour(Node* neighbour, const long double dist);
+    double addNeighbour(Node* neighbour);
+    void addNeighbour(Node* neighbour, const double dist);
     // remove a neighbour from the node
     void removeNeighbour(Node* neighbour);
     // reset the node (f, g, h values)
     void reset();
 
     // getters and setters:
-    const int getId();
-    const long double getCost();
-    void setCost(const long double cost);
+    int getId() const;
+    double getCost() const;
+    void setCost(const double cost);
     void setResetHash(int resetHash);
+    int getLookupTableIdx() const;
+    void setLookupTableIdx(int i);
 
-    const std::vector<Node*>& getNeighbours();
-    const std::vector<long double>& getDistances();
+    const std::vector<Node*>& getNeighbours() const;
+    const std::vector<double>& getDistances() const;
     void setPreviousNode(Node* previousNode);
-    const Node* getPreviousNode();
+    const Node* getPreviousNode() const;
 
     // get shortest path, distance to another node
     const std::deque<Node*> pathTo(Node* destination);
-    long double distTo(const Node* destination);
+    double distTo(const Node* destination);
     // get distances to all given nodes
     void explore(const std::vector<Node*>& toFind);
 
     // constant function for distance between two nodes
-    const static long double dist(const Node* a, const Node* b);
+    const static double dist(const Node* a, const Node* b);
     const static std::deque<Node*> assemblePath(Node* from, Node* to); 
 
 protected:
     int id = -1;
-    long double x = 0;
-    long double y = 0;
+    double x = 0;
+    double y = 0;
+    int lookupTableIdx = -1;
 
 private:
-    long double cost;
-    long double resetNum = NULL;
+    double cost;
+    double resetNum = NULL;
 
-    long double getRand();
-    static long double previousRandNum;
+    double getRand();
+    static double previousRandNum;
 
     // note that indices of these correspond to each other
     std::vector<Node*> neighbours;
-    std::vector<long double> distances;
+    std::vector<double> distances;
 
     // useful during graph traversal
     Node* previousNode;

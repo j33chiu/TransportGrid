@@ -21,8 +21,8 @@ public:
     Node* getStartNode();
     Node* getEndNode();
 
-    const long double getCost();
-    long double evaluateCost();
+    const double getCost();
+    double evaluateCost();
 
 private:
     // counter for ID
@@ -36,6 +36,6 @@ private:
 
     std::unordered_set<Package*> assignedPackages; // list of packages that must stay on this truck during solving. can move around in this truck's delivery order, but not to other trucks
     std::vector<Package*> packages;
-    long double currentCost;
+    double currentCost;
 
 };

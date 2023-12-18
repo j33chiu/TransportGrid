@@ -6,20 +6,20 @@
 #include <string>
 #include <unordered_set>
 
-Node::Node(int id, long double x, long double y) {
+Node::Node(int id, double x, double y) {
     this->id = id;
     this->x = x;
     this->y = y;
 }
 
-long double Node::addNeighbour(Node* neighbour) {
+double Node::addNeighbour(Node* neighbour) {
     neighbours.emplace_back(neighbour);
-    long double dist = Node::dist(this, neighbour);
+    double dist = Node::dist(this, neighbour);
     distances.emplace_back(dist);
     return dist;
 }
 
-void Node::addNeighbour(Node* neighbour, long double dist) {
+void Node::addNeighbour(Node* neighbour, double dist) {
     neighbours.emplace_back(neighbour);
     distances.emplace_back(dist);
 }
@@ -39,23 +39,31 @@ void Node::reset() {
     previousNode = nullptr;
 }
 
-const int Node::getId() {
+int Node::getId() const {
     return id;
 }
 
-const long double Node::getCost() {
+double Node::getCost() const {
     return cost;
 }
 
-void Node::setCost(const long double cost) {
+void Node::setCost(const double cost) {
     this->cost = cost;
 }
 
-const std::vector<Node*>& Node::getNeighbours() {
+int Node::getLookupTableIdx() const {
+    return lookupTableIdx;
+}
+
+void Node::setLookupTableIdx(int i) {
+    lookupTableIdx = i;
+}
+
+const std::vector<Node*>& Node::getNeighbours() const {
     return neighbours;
 }
 
-const std::vector<long double>& Node::getDistances() {
+const std::vector<double>& Node::getDistances() const {
     return distances;
 }
 
@@ -63,7 +71,7 @@ void Node::setPreviousNode(Node* previousNode) {
     this->previousNode = previousNode;
 }
 
-const Node* Node::getPreviousNode() {
+const Node* Node::getPreviousNode() const {
     return previousNode;
 }
 
@@ -72,13 +80,13 @@ const std::deque<Node*> Node::pathTo(Node* destination) {
     return assemblePath(this, destination);
 }
 
-long double Node::distTo(const Node* destination) {
-    PriorityQueue<Node*, long double> pq;
+double Node::distTo(const Node* destination) {
+    PriorityQueue<Node*, double> pq;
     
     cost = 0;
     pq.put(this, 0);
 
-    long double randomNum = getRand();
+    double randomNum = getRand();
 
     while (previousRandNum == randomNum) {
         randomNum = getRand();
@@ -99,7 +107,7 @@ long double Node::distTo(const Node* destination) {
 
         for (int i = 0; i < currentNode->neighbours.size(); i++) {
             Node* neighbourNode = currentNode->neighbours[i];
-            long double neighbourDist = currentNode->distances[i];
+            double neighbourDist = currentNode->distances[i];
             if (neighbourNode->resetNum == NULL || neighbourNode->resetNum != randomNum) {
                 neighbourNode->reset();
                 neighbourNode->resetNum = randomNum;
@@ -110,10 +118,10 @@ long double Node::distTo(const Node* destination) {
             //     seen.emplace(neighbourNode);
             //     neighbourNode->reset();
             // }
-            long double totalCostG = currentNode->cost + neighbourDist;
+            double totalCostG = currentNode->cost + neighbourDist;
             if (neighbourNode->cost > totalCostG) {
                 neighbourNode->cost = totalCostG;
-                long double totalCostF = totalCostG + dist(neighbourNode, destination);
+                double totalCostF = totalCostG + dist(neighbourNode, destination);
                 pq.put(neighbourNode, totalCostF);
                 neighbourNode->previousNode = currentNode;
             }
@@ -124,12 +132,12 @@ long double Node::distTo(const Node* destination) {
 
 // assumes everything in toFind is unique
 void Node::explore(const std::vector<Node*>& toFind) {
-    PriorityQueue<Node*, long double> pq;
+    PriorityQueue<Node*, double> pq;
     
     cost = 0;
     pq.put(this, 0);
 
-    long double randomNum = getRand();
+    double randomNum = getRand();
     while (previousRandNum == randomNum) {
         randomNum = getRand();
     }
@@ -154,12 +162,12 @@ void Node::explore(const std::vector<Node*>& toFind) {
 
         for (int i = 0; i < currentNode->neighbours.size(); i++) {
             Node* neighbourNode = currentNode->neighbours[i];
-            long double neighbourDist = currentNode->distances[i];
+            double neighbourDist = currentNode->distances[i];
             if (neighbourNode->resetNum == NULL || neighbourNode->resetNum != randomNum) {
                 neighbourNode->reset();
                 neighbourNode->resetNum = randomNum;
             }
-            long double totalCost = currentNode->cost + neighbourDist;
+            double totalCost = currentNode->cost + neighbourDist;
             if (neighbourNode->cost > totalCost) {
                 neighbourNode->cost = totalCost;
                 pq.put(neighbourNode, totalCost);
@@ -169,13 +177,13 @@ void Node::explore(const std::vector<Node*>& toFind) {
     }
 }
 
-const long double Node::dist(const Node* a, const Node* b) {
+const double Node::dist(const Node* a, const Node* b) {
     return sqrt(pow((a->x - b->x), 2) + pow((a->y - b->y), 2));
 }
 
 const std::deque<Node*> Node::assemblePath(Node* from, Node* to) {
     std::deque<Node*> path;
-    long double finalCost = to->cost;
+    double finalCost = to->cost;
     if (finalCost < NODE_MAX_VALUE) {
         Node* n = to;
         while (n != from) {
@@ -189,11 +197,11 @@ const std::deque<Node*> Node::assemblePath(Node* from, Node* to) {
     return path;
 }
 
-long double Node::getRand() {
+double Node::getRand() {
     static std::random_device rd;
     static std::mt19937 gen = std::mt19937(rd());
     static std::uniform_real_distribution<> dis = std::uniform_real_distribution<>(0.0, 1000.0);
     return dis(gen);
 }
 
-long double Node::previousRandNum = NULL;
+double Node::previousRandNum = NULL;

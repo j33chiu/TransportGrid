@@ -38,12 +38,12 @@ Node* Truck::getEndNode() {
     return endNode;
 }
 
-const long double Truck::getCost() {
+const double Truck::getCost() {
     return currentCost;
 }
 
-long double Truck::evaluateCost() {
-    long double cost = 0;
+double Truck::evaluateCost() {
+    double cost = 0;
     Node* currentNode = startNode;
     for (Package* p : packages) {
         cost += currentNode->distTo(p->getNode());

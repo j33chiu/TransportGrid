@@ -21,12 +21,12 @@ public:
     void clearTrucks();
 
     // simulated annealing
-    long double solve();
+    double solve();
 
     ~Solver();
 
     const static int MAX_COST = 99999999999;
-    static bool isClose(long double a, long double b);
+    static bool isClose(double a, double b);
 
 private:
     // stores list of packages
@@ -38,16 +38,16 @@ private:
 
     // solver parameters
     // cost function
-    long double wDist = 0.5;
-    long double wTime = 0.5;
+    double wDist = 0.5;
+    double wTime = 0.5;
     // simulated annealing config
     int saInitTemp = 10000;
     int saStopCond1 = 20000;
     int saStopCond2 = 150000;
     int saIters = 1;
-    int saMaxTime = 15; // in seconds
+    int saMaxTime = 120; // in seconds
 
-    const static long double e;
+    const static double e;
     
 
 };

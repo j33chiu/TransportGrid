@@ -6,8 +6,8 @@
 #include "Graph.h"
 #include "Solver.h"
 
-long double debug(std::vector<Package*> route, Truck* t) {
-    long double cost = 0;
+double debug(std::vector<Package*> route, Truck* t) {
+    double cost = 0;
     Node* currentNode = t->getStartNode();
     for (Package* p : route) {
         cost += currentNode->distTo(p->getNode());

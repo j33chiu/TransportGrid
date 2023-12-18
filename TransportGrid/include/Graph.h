@@ -7,19 +7,19 @@ public:
     Graph();
 
     // add node
-    Node* createNode(const int id, const long double x, const long double y);
-    Node* createNode(const long double x, const long double y);
+    Node* createNode(const int id, const double x, const double y);
+    Node* createNode(const double x, const double y);
 
     // add bidirectional edge
-    long double add2WayEdge(Node* node1, Node* node2);
-    long double add2WayEdge(int node1Id, int node2Id);
+    double add2WayEdge(Node* node1, Node* node2);
+    double add2WayEdge(int node1Id, int node2Id);
     // add unidirectional edge
-    long double add1WayEdge(Node* from, Node* to);
-    long double add1WayEdge(int node1Id, int node2Id);
+    double add1WayEdge(Node* from, Node* to);
+    double add1WayEdge(int node1Id, int node2Id);
 
     // get shortest path to another node
-    long double distBetween(Node* from, Node* to);
-    long double distBetween(int fromId, int toId);
+    double distBetween(Node* from, Node* to);
+    double distBetween(int fromId, int toId);
     const std::deque<Node*> pathBetween(Node* from, Node* to);
     const std::deque<Node*> pathBetween(int fromId, int toId);
     
@@ -28,22 +28,22 @@ public:
     void calculateDistanceTable(std::vector<Node*> relevantNodes);
     void explore(Node* startNode);
     // get lowest cost from cost table
-    long double getCost(Node* from, Node* to);
-    long double getCost(int fromId, int toId);
+    double getCost(Node* from, Node* to) const;
+    double getCost(int fromId, int toId) const;
 
-    Node* getNodeById(int id);
-    std::vector<Node*> getNodesById(std::vector<int>& ids);
+    Node* getNodeById(int id) const;
+    std::vector<Node*> getNodesById(std::vector<int>& ids) const;
 
     void resetAllNodes();
     void deleteGraph();
 
     ~Graph();
 
-    static bool isClose(long double a, long double b);
+    static bool isClose(double a, double b);
 
 private:
     // default node
-    Node defaultNode = Node(-1, 0, 0);
+    const Node defaultNode = Node(-1, 0, 0);
 
     // list of all nodes, only place in program that creates and destroys Node objects 
     // ensure new and delete used
@@ -54,9 +54,9 @@ private:
     // keys are "<node 1 id>:<node 2 id>"
     const static std::string key(Node* n1, Node* n2);
     const static std::string key(int n1Id, int n2Id);
-    std::unordered_map<std::string, long double> costMap;
+    std::vector<std::vector<double>> costTable;
 
     int node_id_count = 0;
 
-    const static long double e;
+    const static double e;
 };

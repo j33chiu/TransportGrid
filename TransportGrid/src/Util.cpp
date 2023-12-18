@@ -91,7 +91,7 @@ void Util::readFakeMap() {
         file.close();
     }
     else {
-        std::cout << "file not opened" << std::endl;
+        std::cout << "generatedMap.txt file not opened" << std::endl;
     }
 }
 
@@ -125,9 +125,9 @@ void Util::readProblem() {
     /*
     num_trucks
     ........
-    startNodeId, endNodeId, people cap, volume cap
+    startNodeId endNodeId people cap volume cap
     ........
-    delivery_id1,delivery_id2......
+    delivery_id1 delivery_id2......
     */
 
     std::ifstream file;
@@ -158,7 +158,7 @@ void Util::readProblem() {
         file.close();
     }
     else {
-        std::cout << "file not opened" << std::endl;
+        std::cout << "problem.txt file not opened" << std::endl;
     }
 }
 
