@@ -6,13 +6,19 @@
 #include <unordered_map>
 
 const static double NODE_MAX_VALUE = 1000000000.0;
+
+enum class NodeMode {
+    XY,
+    LATLONG
+};
+
 class Node {
 public:
     Node(int id, double x, double y);
 
     // add a neighbour to the node
     double addNeighbour(Node* neighbour);
-    void addNeighbour(Node* neighbour, const double dist);
+    void addNeighbour(Node* neighbour, double dist, double time);
     // remove a neighbour from the node
     void removeNeighbour(Node* neighbour);
     // reset the node (f, g, h values)
@@ -38,14 +44,19 @@ public:
     void explore(const std::vector<Node*>& toFind);
 
     // constant function for distance between two nodes
-    const static double dist(const Node* a, const Node* b);
-    const static std::deque<Node*> assemblePath(Node* from, Node* to); 
+    static double dist(const Node* a, const Node* b);
+
+    // constant function for assembling path between nodes
+    static std::deque<Node*> assemblePath(Node* from, Node* to); 
+
+    static void setNodeCoordinatesMode(NodeMode mode);
 
 protected:
     int id = -1;
     double x = 0;
     double y = 0;
     int lookupTableIdx = -1;
+    static NodeMode mode;
 
 private:
     double cost;
@@ -57,6 +68,7 @@ private:
     // note that indices of these correspond to each other
     std::vector<Node*> neighbours;
     std::vector<double> distances;
+    std::vector<double> times;      // if given speed limits
 
     // useful during graph traversal
     Node* previousNode;

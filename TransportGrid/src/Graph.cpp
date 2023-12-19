@@ -43,12 +43,52 @@ double Graph::add2WayEdge(int node1Id, int node2Id) {
     return add2WayEdge(nodesMap[node1Id], nodesMap[node2Id]);
 }
 
+void Graph::add2WayEdge(int node1Id, int node2Id, double dist, int speedLimit) {
+    // speed limit is km/h
+    // dist is m
+    Node* node1 = nodesMap[node1Id];
+    Node* node2 = nodesMap[node2Id];
+    double time = ((dist / 1000.0) / speedLimit) * 3600.0; // seconds
+    if (std::find(node1->getNeighbours().begin(), node1->getNeighbours().end(), node2) == node1->getNeighbours().end()) {
+        node1->addNeighbour(node2, dist, time);
+    }
+    if (std::find(node2->getNeighbours().begin(), node2->getNeighbours().end(), node1) == node2->getNeighbours().end()) {
+        node2->addNeighbour(node1, dist, time);
+    }
+}
+
 double Graph::add1WayEdge(Node* from, Node* to) {
     return from->addNeighbour(to);
 }
 
 double Graph::add1WayEdge(int node1Id, int node2Id) {
     return add1WayEdge(nodesMap[node1Id], nodesMap[node2Id]);
+}
+
+void Graph::add1WayEdge(int sourceId, int destId, double dist, int speedLimit) {
+    // speed limit is km/h
+    // dist is m
+    Node* source = nodesMap[sourceId];
+    Node* dest = nodesMap[destId];
+    if (std::find(source->getNeighbours().begin(), source->getNeighbours().end(), dest) == source->getNeighbours().end()) {
+        double time = ((dist / 1000.0) / speedLimit) * 3600.0; // seconds
+        source->addNeighbour(dest, dist, time);
+    }
+}
+
+Node* Graph::findClosestNodeTo(double a, double b) {
+    double shortestDist = NODE_MAX_VALUE;
+    Node* closestNode = nullptr;
+
+    Node tempNode(-1, a, b);
+    for (Node* n : nodesList) {
+        double dist = Node::dist(n, &tempNode);
+        if (dist < shortestDist) {
+            shortestDist = dist;
+            closestNode = n;
+        }
+    }
+    return closestNode;
 }
 
 double Graph::distBetween(Node* from, Node* to) {

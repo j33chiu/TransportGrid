@@ -17,6 +17,12 @@ public:
     void overwritePackages(std::vector<Package*> newPackages);
 
     void assignPackage(Package* package);
+    bool canRemove(Package* package) const;
+    bool canRemove(const std::vector<Package*>& package) const;
+
+    void setName(std::string name);
+    std::string getName() const;
+    int getId() const;
 
     Node* getStartNode();
     Node* getEndNode();
@@ -29,6 +35,7 @@ private:
     static int ID;
 
     int id;
+    std::string truckName;
     int peopleCap = 4;
     double volumeCap = 100;
     Node* startNode;

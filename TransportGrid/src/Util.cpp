@@ -17,6 +17,19 @@ std::vector<int> splitInt(std::string str, std::string delimit) {
     return v;
 }
 
+std::vector<std::string> splitByDelimiter(std::string str, std::string delimit) {
+    size_t pos = 0;
+    std::string token;
+    std::vector<std::string> v;
+    while ((pos = str.find(delimit)) != std::string::npos) {
+        token = str.substr(0, pos);
+        v.push_back(token);
+        str.erase(0, pos + delimit.length());
+    }
+    v.push_back(str);
+    return v;
+}
+
 Util::Util(Graph* graph, Solver* solver) {
     this->graph = graph;
     this->solver = solver;
@@ -48,19 +61,9 @@ void Util::readFakeMap() {
         std::string line;
 
         std::getline(file, line);
-        std::vector<int> rangeLine = splitInt(line, ",");
-        xMin = rangeLine[0];
-        xMax = rangeLine[1];
-        yMin = rangeLine[2];
-        yMax = rangeLine[3];
-
-        std::getline(file, line);
-        std::vector<int> startNodeLine = splitInt(line, ",");
-        int startNodeId = startNodeLine[0];
-
-        std::getline(file, line);
         std::vector<int> numNodesLine = splitInt(line, ",");
         numNodes = numNodesLine[0];
+        Node::setNodeCoordinatesMode(NodeMode::XY);
         for (int i = 0; i < numNodes; i++) {
             std::getline(file, line);
             std::vector<int> nodeLine = splitInt(line, ",");
@@ -80,13 +83,6 @@ void Util::readFakeMap() {
             int node2Id = edgeLine[1];
             graph->add2WayEdge(node1Id, node2Id);
         }
-
-        std::getline(file, line);
-        std::vector<int> deliveriesLine = splitInt(line, ",");
-        std::vector<Node*> deliveryNodes = graph->getNodesById(deliveriesLine);
-        solver->setPackages(deliveryNodes);
-
-        Node* startNode = graph->getNodeById(startNodeId);
 
         file.close();
     }
@@ -110,6 +106,56 @@ void Util::readRealMap() {
     ...
     edges: (source id, dest id, length (m), street type, speed lim (km/h), direction (0-uni, 1-bi))
     */
+
+    std::ifstream file;
+    file.open("ontario.txt");
+    if (file.is_open()) {
+        std::string line;
+
+        std::getline(file, line);
+        while (line.at(0) == '#') {
+            std::getline(file, line);
+        }
+
+        std::vector<int> numNodesLine = splitInt(line, ",");
+        numNodes = numNodesLine[0];
+
+        std::getline(file, line);
+        std::vector<int> numEdgesLine = splitInt(line, ",");
+        int numEdges = numEdgesLine[0];
+
+        Node::setNodeCoordinatesMode(NodeMode::LATLONG);
+        for (int i = 0; i < numNodes; i++) {
+            std::getline(file, line);
+            std::vector<std::string> nodeLine = splitByDelimiter(line, " ");
+            int nodeId = std::stoi(nodeLine[0]);
+            double latitude = std::stod(nodeLine[1]);
+            double longitude = std::stod(nodeLine[2]);
+            graph->createNode(nodeId, latitude, longitude);
+        }
+
+        for (int i = 0; i < numEdges; i++) {
+            std::getline(file, line);
+            std::vector<std::string> edgeLine = splitByDelimiter(line, " ");
+            int sourceId = std::stoi(edgeLine[0]);
+            int destId = std::stoi(edgeLine[1]);
+            double dist = std::stod(edgeLine[2]);
+            std::string streetType = edgeLine[3];
+            int speedLimit = std::stoi(edgeLine[4]);
+            bool bidirectional = std::stoi(edgeLine[5]) == 1;
+
+            if (bidirectional) {
+                graph->add2WayEdge(sourceId, destId, dist, speedLimit);
+            } else {
+                graph->add1WayEdge(sourceId, destId, dist, speedLimit);
+            }
+        }
+
+        file.close();
+    }
+    else {
+        std::cout << "generatedMap.txt file not opened" << std::endl;
+    }
 }
 
 void Util::writeFakeMap() {
@@ -120,7 +166,7 @@ void Util::writeRealMap() {
 
 }
 
-void Util::readProblem() {
+void Util::readFakeProblem() {
     // read files
     /*
     num_trucks
@@ -153,7 +199,77 @@ void Util::readProblem() {
         std::vector<Node*> deliveryNodes = graph->getNodesById(deliveriesLine);
         solver->setPackages(deliveryNodes);
 
-        // TODO: if the package is assigned to a truck, do it here
+        file.close();
+    }
+    else {
+        std::cout << "problem.txt file not opened" << std::endl;
+    }
+}
+
+void Util::readRealProblem() {
+    // read files
+    /*
+    num_trucks
+    ........
+    truckName startLat startLong endLat endLong peopleCap volumeCap
+    ........
+    num_deliveries
+    ........
+    deliveryName lat long (optional: truckName)
+    ........
+    */
+
+    std::ifstream file;
+    file.open("realProblem.txt");
+    if (file.is_open()) {
+        std::string line;
+
+        std::getline(file, line);
+        std::vector<int> numTrucksLine = splitInt(line, " ");
+        int numTrucks = numTrucksLine[0];
+        for (int i = 0; i < numTrucks; i++) {
+            std::getline(file, line);
+            std::vector<std::string> truckLine = splitByDelimiter(line, " ");
+            std::string truckName = truckLine[0];
+            double startLat = std::stod(truckLine[1]);
+            double startLong = std::stod(truckLine[2]);
+            double endLat = std::stod(truckLine[3]);
+            double endLong = std::stod(truckLine[4]);
+            int truckPeopleCap = std::stoi(truckLine[5]);
+            double truckVolCap = std::stod(truckLine[6]);
+                        
+            Node* truckStart = graph->findClosestNodeTo(startLat, startLong);
+            Node* truckEnd = graph->findClosestNodeTo(endLat, endLong);
+
+            Truck* t = solver->addTruck(truckStart, truckEnd, truckPeopleCap, truckVolCap);
+            t->setName(truckName);
+        }
+
+        solver->clearPackages();
+        std::getline(file, line);
+        std::vector<int> numDeliveriesLine = splitInt(line, " ");
+        int numDeliveries = numDeliveriesLine[0];
+        for (int i = 0; i < numDeliveries; i++) {
+            std::getline(file, line);
+            std::vector<std::string> deliveryLine = splitByDelimiter(line, " ");
+            std::string deliveryName = deliveryLine[0];
+            double latitude = std::stod(deliveryLine[1]);
+            double longitude = std::stod(deliveryLine[2]);
+
+            Node* deliveryNode = graph->findClosestNodeTo(latitude, longitude);
+            Package* package = solver->addPackage(deliveryNode);
+            if (deliveryLine.size() > 3) {
+                // package is assigned
+                std::string assignedTruck = deliveryLine[3];
+                for (Truck* t : solver->getTrucks()) {
+                    if (t->getName() == assignedTruck) {
+                        t->assignPackage(package);
+                        package->setAssignedTruckId(t->getId());
+                        break;
+                    }
+                }
+            }
+        }
 
         file.close();
     }
@@ -162,6 +278,10 @@ void Util::readProblem() {
     }
 }
 
-void Util::writeProblem() {
+void Util::writeFakeProblem() {
+
+}
+
+void Util::writeRealProblem() {
 
 }

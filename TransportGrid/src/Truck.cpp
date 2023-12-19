@@ -30,6 +30,31 @@ void Truck::assignPackage(Package* package) {
     }
 }
 
+bool Truck::canRemove(Package* package) const {
+    return assignedPackages.find(package) == assignedPackages.end();
+}
+
+bool Truck::canRemove(const std::vector<Package*>& packages) const {
+    for (Package* p : packages) {
+        if (assignedPackages.find(p) != assignedPackages.end()) {
+            return false;
+        }
+    }
+    return true;
+}
+
+void Truck::setName(std::string name) {
+    this->truckName = name;
+}
+
+std::string Truck::getName() const {
+    return truckName;
+}
+
+int Truck::getId() const {
+    return id;
+}
+
 Node* Truck::getStartNode() {
     return startNode;
 }

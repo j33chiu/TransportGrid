@@ -13,9 +13,13 @@ public:
     // add bidirectional edge
     double add2WayEdge(Node* node1, Node* node2);
     double add2WayEdge(int node1Id, int node2Id);
+    void add2WayEdge(int node1Id, int node2Id, double distance, int speedlimit);
     // add unidirectional edge
     double add1WayEdge(Node* from, Node* to);
     double add1WayEdge(int node1Id, int node2Id);
+    void add1WayEdge(int sourceId, int destId, double distance, int speedlimit);
+
+    Node* findClosestNodeTo(double a, double b);
 
     // get shortest path to another node
     double distBetween(Node* from, Node* to);

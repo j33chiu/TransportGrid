@@ -30,8 +30,6 @@ public:
     std::unordered_map<Truck*, double> getRouteCostMapCopy();
 
     SolutionStateResult createNeighbour();
-    SolutionStateResult createNeighbourTSP();
-    SolutionStateResult createNeighbourShuffle();
 
     // simulated annealing helper functions
     Node* getNodeBefore(const int idx, Truck* truck, const std::vector<Package*>& packages) const;

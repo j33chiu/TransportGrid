@@ -24,7 +24,7 @@ int main() {
     // load map (graph info) and problem (deliveries, trucks info)
     Util util(g.get(), solver.get());
     util.readFakeMap();
-    util.readProblem();
+    util.readFakeProblem();
     solver->solve();
 
 

@@ -8,6 +8,11 @@ Solver::Solver(Graph* graph) {
     this->graph = graph;
 }
 
+Package* Solver::addPackage(Node* node) {
+    packages.push_back(new Package(node));
+    return packages.back();
+}
+
 std::vector<Package*> Solver::setPackages(std::vector<Node*> packageNodes) {
     clearPackages();
     for (Node* n : packageNodes) {
@@ -67,7 +72,7 @@ double Solver::solve() {
     }
     graph->calculateDistanceTable(importantNodes);
 
-    std::cout << "searching..." << std::endl;
+    std::cout << "searching (~2 min max)..." << std::endl;
     // setup data storage for SA
     std::unordered_map<Truck*, std::vector<Package*>> initialRouteMap;
     std::unordered_map<Truck*, double> initialRouteCostMap;
@@ -88,8 +93,16 @@ double Solver::solve() {
         std::mt19937 gen(rd());
         std::uniform_int_distribution<> dis(0, trucks.size() - 1);
         for (Package* p : packages) {
-            // randomly assign
-            // TODO: if a package has a designated truck, assign it here
+            // randomly assign, unless package has assigned truck
+            if (p->isAssigned()) {
+                for (Truck* t : trucks) {
+                    if (t->getId() == p->getAssignedTruckId()) {
+                        initialRouteMap[t].push_back(p);
+                        break;
+                    }
+                }
+                continue;
+            }
             int ti = dis(gen);
             initialRouteMap[trucks[ti]].push_back(p);
         }
@@ -104,7 +117,7 @@ double Solver::solve() {
         SolutionState state(trucks, initialRouteMap, initialRouteCostMap, graph, wDist, wTime);
 
         // simulated annealing here:
-        double a = 0.99;
+        double a = 0.99999;
         double currentTemp = saInitTemp;
 
         int repeated = 0;
@@ -113,7 +126,7 @@ double Solver::solve() {
         std::chrono::steady_clock::time_point saIterStart = std::chrono::steady_clock::now();
         int saIterElapsed = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - saIterStart).count();
         int debugIters = 0;
-        while ((repeated < saStopCond1) && (repeatedCost < saStopCond2) && (debugIters < 60000000)) {
+        while ((repeated < saStopCond1) && (repeatedCost < saStopCond2) && (debugIters < 120000000)) {
             state.setCurrentTemp(currentTemp);
             SolutionStateResult result = state.createNeighbour();
 
@@ -163,17 +176,20 @@ double Solver::solve() {
         double assertDist = t->evaluateCost();
         sum += assertDist;
         if (!isClose(assertDist, bestRouteCostMap[t])) {
-            std::cout << "actual route dist not equal to expected route dist, likely error in sa: " << assertDist << ", " << bestRouteCostMap[t] << std::endl;
+            std::cout << std::setprecision(std::numeric_limits<double>::digits10 + 1) 
+                << "actual route dist not equal to expected route dist, likely error in sa: " << assertDist << ", " << bestRouteCostMap[t] << std::endl;
         }
         if (assertDist > assertLongestDist) {
             assertLongestDist = assertDist;
         }
     }
     if (!isClose(sum, bestTotalDist)) {
-        std::cout << "actual total dist not equal to expected total dist, likely error in sa: " << sum << ", " << bestTotalDist << std::endl;
+        std::cout << std::setprecision(std::numeric_limits<double>::digits10 + 1) 
+            << "actual total dist not equal to expected total dist, likely error in sa: " << sum << ", " << bestTotalDist << std::endl;
     }
     if (!isClose(assertLongestDist, bestLongestDist)) {
-        std::cout << "actual longest dist not equal to expected longest dist, likely error in sa: " << assertLongestDist << ", " << bestLongestDist << std::endl;
+        std::cout << std::setprecision(std::numeric_limits<double>::digits10 + 1) 
+            << "actual longest dist not equal to expected longest dist, likely error in sa: " << assertLongestDist << ", " << bestLongestDist << std::endl;
     }
 
     double finalCost = (wDist * sum) + (wTime * assertLongestDist);

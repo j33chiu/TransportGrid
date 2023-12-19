@@ -14,8 +14,11 @@ public:
     void writeFakeMap();
     void writeRealMap();
 
-    void readProblem();
-    void writeProblem();
+    void readFakeProblem();
+    void readRealProblem();
+
+    void writeFakeProblem();
+    void writeRealProblem();
 
     // random graph generator settings
     void setXMin(int xMin);

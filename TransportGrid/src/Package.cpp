@@ -23,3 +23,15 @@ const int Package::getPeople() const {
 const double Package::getVolume() const {
     return volume;
 }
+
+bool Package::isAssigned() const {
+    return assignedTruckId != -1;
+}
+
+int Package::getAssignedTruckId() const {
+    return assignedTruckId;
+}
+
+void Package::setAssignedTruckId(int id) {
+    assignedTruckId = id;
+}

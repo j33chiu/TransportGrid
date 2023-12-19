@@ -10,6 +10,7 @@ public:
     Solver(Graph* graph);
 
     // take copy of deliveries and save into packages
+    Package* addPackage(Node* node);
     std::vector<Package*> setPackages(std::vector<Node*> packageNodes);
     std::vector<Package*> setPackages(std::vector<Node*> packageNodes, std::vector<int> people, std::vector<double> volume);
     std::vector<Package*> getPackages();
@@ -38,12 +39,12 @@ private:
 
     // solver parameters
     // cost function
-    double wDist = 0.5;
-    double wTime = 0.5;
+    double wDist = 0.8;
+    double wTime = 0.2;
     // simulated annealing config
-    int saInitTemp = 10000;
-    int saStopCond1 = 20000;
-    int saStopCond2 = 150000;
+    int saInitTemp = 100000000;
+    int saStopCond1 = 1000000;
+    int saStopCond2 = 10000000;
     int saIters = 1;
     int saMaxTime = 120; // in seconds
 

@@ -16,12 +16,14 @@ double Node::addNeighbour(Node* neighbour) {
     neighbours.emplace_back(neighbour);
     double dist = Node::dist(this, neighbour);
     distances.emplace_back(dist);
+    times.emplace_back(dist); // assume speed of 1 unit/s
     return dist;
 }
 
-void Node::addNeighbour(Node* neighbour, double dist) {
+void Node::addNeighbour(Node* neighbour, double dist, double time) {
     neighbours.emplace_back(neighbour);
     distances.emplace_back(dist);
+    times.emplace_back(time);
 }
 
 void Node::removeNeighbour(Node* neighbour) {
@@ -177,11 +179,14 @@ void Node::explore(const std::vector<Node*>& toFind) {
     }
 }
 
-const double Node::dist(const Node* a, const Node* b) {
+double Node::dist(const Node* a, const Node* b) {
+    if (Node::mode == NodeMode::XY) {
+        return sqrt(pow((a->x - b->x), 2) + pow((a->y - b->y), 2));
+    } 
     return sqrt(pow((a->x - b->x), 2) + pow((a->y - b->y), 2));
 }
 
-const std::deque<Node*> Node::assemblePath(Node* from, Node* to) {
+std::deque<Node*> Node::assemblePath(Node* from, Node* to) {
     std::deque<Node*> path;
     double finalCost = to->cost;
     if (finalCost < NODE_MAX_VALUE) {
@@ -197,6 +202,10 @@ const std::deque<Node*> Node::assemblePath(Node* from, Node* to) {
     return path;
 }
 
+void Node::setNodeCoordinatesMode(NodeMode mode) {
+    Node::mode = mode;
+}
+
 double Node::getRand() {
     static std::random_device rd;
     static std::mt19937 gen = std::mt19937(rd());
@@ -205,3 +214,4 @@ double Node::getRand() {
 }
 
 double Node::previousRandNum = NULL;
+NodeMode Node::mode = NodeMode::XY;

@@ -57,46 +57,21 @@ std::unordered_map<Truck*, double> SolutionState::getRouteCostMapCopy() {
 }
 
 SolutionStateResult SolutionState::createNeighbour() {
-    static std::vector<int> choiceTypes = {0, 1};
-    static std::uniform_int_distribution<> choiceTypesDist(0, choiceTypes.size() - 1);
+    static std::vector<SolutionStateResult(SolutionState::*)()> neighbourFunctions = {
+        &SolutionState::inverseSubroute,
+        &SolutionState::swapPackages,
+        &SolutionState::movePackage,
+        &SolutionState::moveSubroute,
+        &SolutionState::givePackage,
+        &SolutionState::giveSubroute,
+        &SolutionState::exchangePackages
+    };
+    static std::uniform_int_distribution<> choiceDist(0, neighbourFunctions.size() - 1);
+
     SolutionStateResult result = SolutionStateResult::REDO;
     while (result == SolutionStateResult::REDO) {
-        int choiceType = choiceTypesDist(gen);
-        if (choiceType == 0) {
-            result = createNeighbourShuffle();
-        } else {
-            result = createNeighbourTSP();
-        }
-    }
-    return result;
-}
-
-SolutionStateResult SolutionState::createNeighbourShuffle() {
-    static std::vector<int> choices = {0, 1};
-    static std::uniform_int_distribution<> choiceDist(0, choices.size() - 1);
-    int choice = choiceDist(gen);
-    SolutionStateResult result = SolutionStateResult::REDO;
-    if (choice == 0) {
-        result = givePackage();
-    } else if (choice == 1) {
-        result = giveSubroute();
-    }
-    return result;
-}
-
-SolutionStateResult SolutionState::createNeighbourTSP() {
-    static std::vector<int> choices = {0, 1, 2, 3};
-    static std::uniform_int_distribution<> choiceDist(0, choices.size() - 1);
-    int choice = choiceDist(gen);
-    SolutionStateResult result = SolutionStateResult::REDO;
-    if (choice == 0) {
-        result = inverseSubroute();
-    } else if (choice == 1) {
-        result = swapPackages();
-    } else if (choice == 2) {
-        result = movePackage();
-    } else if (choice == 3) {
-        result = moveSubroute();
+        int choiceIdx = choiceDist(gen);
+        result = (this->*neighbourFunctions[choiceIdx])();
     }
     return result;
 }
@@ -239,7 +214,6 @@ SolutionStateResult SolutionState::inverseSubroute() {
     return result;
 }
 
-// TODO: this is almost 2x slower than python
 SolutionStateResult SolutionState::swapPackages() {
     Truck* t = chooseRandomTruck(2);
     if (t == nullptr) return SolutionStateResult::REDO;
@@ -304,7 +278,8 @@ SolutionStateResult SolutionState::swapPackages() {
     // not accepted
     return result;
 }
-// TODO: slower than python
+
+
 SolutionStateResult SolutionState::movePackage() {
     Truck* t = chooseRandomTruck(2);
     if (t == nullptr) return SolutionStateResult::REDO;
@@ -461,6 +436,16 @@ SolutionStateResult SolutionState::givePackage() {
 
     std::uniform_int_distribution<> randIntGiver(0, giverRoute.size() - 1);
     int n1 = randIntGiver(gen);
+    Package* n1Package = giverRoute[n1];
+    int n1Iter = 0;
+    // make sure n1 package is not assigned to the truck
+    while (n1Package->getAssignedTruckId() == t1->getId()) {
+        if (n1Iter == 5) return SolutionStateResult::REDO;
+        n1 = randIntGiver(gen);
+        n1Package = giverRoute[n1];
+        n1Iter++;
+    } 
+
     std::uniform_int_distribution<> randIntReceiver(0, receiverRoute.size());
     int n2 = randIntReceiver(gen);
     
@@ -530,7 +515,7 @@ SolutionStateResult SolutionState::givePackage() {
         routeCostMap[t2] = newReceiverRouteCost;
         longestRouteDistance = newLongestDistance;
         longestTruckRoute = newLongestTruckRoute;
-        updateOverallCost();
+        overallCost = newOverallCost;
         return result;
     }
     // not accepted
@@ -553,14 +538,28 @@ SolutionStateResult SolutionState::giveSubroute() {
     double currentReceiverRouteCost = routeCostMap[t2];
 
     std::uniform_int_distribution<> randIntGiver(0, giverRoute.size() - 1);
-    int n1 = randIntGiver(gen);
-    int n2 = randIntGiver(gen);
-    while (n2 == n1) {
+    int n1, n2;
+    int subrouteIter = 0;
+    bool subRouteCanBeRemoved = true;
+    do {
+        if (subrouteIter == 5) return SolutionStateResult::REDO;
+        n1 = randIntGiver(gen);
         n2 = randIntGiver(gen);
-    }
-    if (n1 > n2) {
-        std::swap(n1, n2);
-    }
+        while (n2 == n1) {
+            n2 = randIntGiver(gen);
+        }
+        if (n1 > n2) {
+            std::swap(n1, n2);
+        }
+        for (int i = n1; i <= n2; i++) {
+            if (giverRoute[i]->getAssignedTruckId() == t1->getId()) {
+                subRouteCanBeRemoved = false;
+                break;
+            }
+        }
+        subrouteIter++;
+    } while (!subRouteCanBeRemoved);
+
     std::uniform_int_distribution<> randIntReceiver(0, receiverRoute.size());
     int n3 = randIntReceiver(gen);
     
@@ -579,10 +578,9 @@ SolutionStateResult SolutionState::giveSubroute() {
     Node* nodeAfterN2 = getNodeAfter(n2, t1, giverRoute);
     Node* nodeBeforeN3 = getNodeBefore(n3, t2, receiverRoute);
 
-    // TODO: this is SLOW, almost halves the number of SA iterations possible
     double subrouteCost = 0;
     for (int i = n1; i < n2; i++) {
-        subrouteCost += graph->getCost(giverRoute[i]->getId(), giverRoute[i + 1]->getId());
+        subrouteCost += graph->getCost(giverRoute[i]->getNode(), giverRoute[i + 1]->getNode());
     }
 
     newGiverRouteCost -= graph->getCost(nodeBeforeN1, n1Node);
@@ -640,7 +638,7 @@ SolutionStateResult SolutionState::giveSubroute() {
         routeCostMap[t2] = newReceiverRouteCost;
         longestRouteDistance = newLongestDistance;
         longestTruckRoute = newLongestTruckRoute;
-        updateOverallCost();
+        overallCost = newOverallCost;
         return result;
     }
     // not accepted
@@ -648,8 +646,111 @@ SolutionStateResult SolutionState::giveSubroute() {
 }
 
 SolutionStateResult SolutionState::exchangePackages() {
+    Truck* t1 = chooseRandomTruck(1); // truck 1
+    Truck* t2 = chooseRandomTruck(1); // truck 2
+    while (t2 == t1) {
+        t2 = chooseRandomTruck(1);
+    }
+    if (t1 == nullptr || t2 == nullptr) return SolutionStateResult::REDO;
 
-    return SolutionStateResult::REDO;
+    double currentOverallCost = overallCost;
+
+    std::vector<Package*>& route1 = routeMap[t1];
+    double currentRoute1Cost = routeCostMap[t1];
+    std::vector<Package*>& route2 = routeMap[t2];
+    double currentRoute2Cost = routeCostMap[t2];
+
+    std::uniform_int_distribution<> randIntRoute1(0, route1.size() - 1);
+    int n1 = randIntRoute1(gen);
+    Package* n1Package = route1[n1];
+    int n1Iter = 0;
+    // make sure n1 package is not assigned to the truck
+    while (n1Package->getAssignedTruckId() == t1->getId()) {
+        if (n1Iter == 5) return SolutionStateResult::REDO;
+        n1 = randIntRoute1(gen);
+        n1Package = route1[n1];
+        n1Iter++;
+    } 
+
+    std::uniform_int_distribution<> randIntRoute2(0, route2.size() - 1);
+    int n2 = randIntRoute2(gen);
+    Package* n2Package = route2[n2];
+    int n2Iter = 0;
+    // make sure n2 package is not assigned to the truck
+    while (n2Package->getAssignedTruckId() == t2->getId()) {
+        if (n2Iter == 5) return SolutionStateResult::REDO;
+        n2 = randIntRoute2(gen);
+        n2Package = route2[n2];
+        n2Iter++;
+    } 
+    
+    double newRoute1Cost = currentRoute1Cost;
+    double newRoute2Cost = currentRoute2Cost;
+
+    Node* n1Node = route1[n1]->getNode();
+    Node* n2Node = route2[n2]->getNode();
+
+    Node* nodeBeforeN1 = getNodeBefore(n1, t1, route1);
+    Node* nodeAfterN1 = getNodeAfter(n1, t1, route1);
+    Node* nodeBeforeN2 = getNodeBefore(n2, t2, route2);
+    Node* nodeAfterN2 = getNodeAfter(n2, t2, route2);
+
+    newRoute1Cost -= graph->getCost(nodeBeforeN1, n1Node);
+    newRoute1Cost -= graph->getCost(n1Node, nodeAfterN1);
+    newRoute1Cost += graph->getCost(nodeBeforeN1, n2Node);
+    newRoute1Cost += graph->getCost(n2Node, nodeAfterN1);
+
+    newRoute2Cost -= graph->getCost(nodeBeforeN2, n2Node);
+    newRoute2Cost -= graph->getCost(n2Node, nodeAfterN2);
+    newRoute2Cost += graph->getCost(nodeBeforeN2, n1Node);
+    newRoute2Cost += graph->getCost(n1Node, nodeAfterN2);
+
+    double newTotalDistance = totalDistance - currentRoute1Cost - currentRoute2Cost;
+    newTotalDistance += newRoute1Cost + newRoute2Cost;
+
+    double newLongestDistance = 0;
+    Truck* newLongestTruckRoute = nullptr;
+    for (Truck* truck : trucks) {
+        double truckDist = routeCostMap[truck];
+        if (truck == t1) truckDist = newRoute1Cost;
+        if (truck == t2) truckDist = newRoute2Cost;
+        if (truckDist >= newLongestDistance) {
+            newLongestDistance = truckDist;
+            newLongestTruckRoute = truck;
+        }
+    }
+    double newOverallCost = (newTotalDistance * wDist) + (newLongestDistance * wTime);
+
+    SolutionStateResult result = shouldAccept(newOverallCost, currentOverallCost);
+    if (result == SolutionStateResult::NEW_SOLN || result == SolutionStateResult::SAME_COST) {
+        // accepted  
+        Package* temp = route1[n1];
+        route1[n1] = route2[n2];
+        route2[n2] = temp;
+
+        // double testCost1 = sanityCheckRoute(t1, giverRoute);
+        // double testCost2 = sanityCheckRoute(t2, receiverRoute);
+        // if (!isClose(testCost1, newGiverRouteCost)) {
+        //     std::cout << std::setprecision(std::numeric_limits<double>::digits10 + 1)
+        //                 << "give node wrong giver cost " << newGiverRouteCost << " vs " << testCost1 << std::endl;
+        //     newGiverRouteCost = testCost1;
+        // }
+        // if (!isClose(testCost2, newReceiverRouteCost)) {
+        //     std::cout << std::setprecision(std::numeric_limits<double>::digits10 + 1)
+        //                 << "give node wrong receiver cost " << newReceiverRouteCost << " vs " << testCost2 << std::endl;
+        //     newReceiverRouteCost = testCost2;
+        // }
+
+        totalDistance = newTotalDistance;
+        routeCostMap[t1] = newRoute1Cost;
+        routeCostMap[t2] = newRoute2Cost;
+        longestRouteDistance = newLongestDistance;
+        longestTruckRoute = newLongestTruckRoute;
+        overallCost = newOverallCost;
+        return result;
+    }
+    // not accepted
+    return result;
 }
 
 SolutionStateResult SolutionState::exchangeSubroutes() {
