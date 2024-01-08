@@ -110,6 +110,7 @@ void Util::readRealMap() {
     std::ifstream file;
     file.open("ontario.txt");
     if (file.is_open()) {
+        std::cout << "loading ontario.txt...\n";
         std::string line;
 
         std::getline(file, line);
@@ -134,6 +135,8 @@ void Util::readRealMap() {
             graph->createNode(nodeId, latitude, longitude);
         }
 
+        std::cout << "done loading nodes...\n";
+
         for (int i = 0; i < numEdges; i++) {
             std::getline(file, line);
             std::vector<std::string> edgeLine = splitByDelimiter(line, " ");
@@ -150,11 +153,13 @@ void Util::readRealMap() {
                 graph->add1WayEdge(sourceId, destId, dist, speedLimit);
             }
         }
+        std::cout << "done loading edges...\n";
+        std::cout << "loaded ontario.txt\n";
 
         file.close();
     }
     else {
-        std::cout << "generatedMap.txt file not opened" << std::endl;
+        std::cout << "ontario.txt file not opened\n";
     }
 }
 

@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Transport Grid</title>
+  <!-- Include Leaflet CSS and JS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <style>
+    body {
+      display: flex;
+      margin: 0;
+    }
+
+    .floatingButton {
+        position: fixed;
+        top: 10px;
+        background-color: #4caf50; /* Green background color */
+        color: white;
+        border: none;
+        padding: 10px;
+        font-size: 16px;
+        cursor: pointer;
+        border-radius: 5px;
+        z-index: 1001; /* Ensure it's above other elements */
+    }
+
+    #exportButton {
+        right: 10px;
+    }
+
+    #importButton {
+        right: 50px; /* Adjust the right position to avoid overlapping with export button */
+    }
+
+    #map {
+      height: 100vh;
+      width: 70%;
+    }
+
+    .panel {
+      width: 30%;
+      height: 100%;
+      padding-left: 10px;
+      padding-right: 10px;
+      overflow-y: auto; /* Add scrollbars if the content exceeds the max-height */
+      background-color: #f2f2f2;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #locationsPanel,
+    #driversPanel {
+        width: 100%;
+        height: 50vh;
+        max-height: 50vh;
+        overflow-y: auto; /* Add scrollbars if the content exceeds the max-height */
+    }
+
+
+    #addAddressContainer,
+    #addDriverContainer {
+      position: sticky;
+      top: 0;
+      background-color: #f2f2f2;
+      z-index: 1;
+      padding: 10px;
+    }
+
+    .addressButton, .driverButton {
+        display: flex;
+        align-items: center;
+        position: relative;
+        padding: 5px 40px 5px 10px; /* Adjust the padding for both left and right */
+        background-color: white; /* White background color */
+        border: 1px solid #ccc; /* Border color */
+        border-radius: 5px;
+        margin: 5px 0; /* Add some margin to separate buttons */
+        height: 40px; /* Adjust the height to match the green button */
+    }
+
+    .deleteButton {
+        position: absolute;
+        right: 40px; /* Adjust the right position to create space between delete and edit buttons */
+        top: 50%;
+        transform: translateY(-50%);
+        cursor: pointer;
+        background-color: #ff0000; /* Red background color */
+        color: white;
+        padding: 5px;
+        border-radius: 5px;
+    }
+
+    .deleteButton i {
+        font-size: 16px;
+        margin-right: 5px; /* Add some space between icon and button text */
+    }
+
+    .addressButton span, 
+    .driverButton span {
+      font-weight: bold;
+    }
+
+    #addAddressButton {
+      display: block;
+      cursor: pointer;
+    }
+
+    #locationPopup, #driverPopup {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      padding: 20px;
+      background-color: white;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      z-index: 1000;
+    }
+
+    #locationPopup form, #driverPopup form {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .editButton {
+        position: absolute;
+        right: 5px; /* Adjust the right position */
+        top: 50%;
+        transform: translateY(-50%);
+        cursor: pointer;
+        background-color: #4caf50; /* Green background color */
+        color: white;
+        padding: 5px;
+        border-radius: 5px;
+    }
+
+    .editButton i {
+        font-size: 16px;
+        margin-left: 5px;
+    }
+
+    .addButton {
+      cursor: pointer;
+    }
+
+    .custom-generic-marker {
+      width: 20px;
+      height: 20px;
+      background-color: blue; 
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .custom-end-marker {
+      width: 20px;
+      height: 20px;
+      background-color: red; 
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .custom-start-marker {
+      width: 20px;
+      height: 20px;
+      background-color: green; 
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .marker-dot {
+      width: 8px;
+      height: 8px;
+      background-color: white;
+      border-radius: 50%;
+    }
+    
+  </style>
+</head>
+<body>
+
+  <div id="exportButton" class="floatingButton" onclick="exportData()">
+    <i class="fas fa-file-upload"></i>
+  </div>
+
+  <input type="file" id="fileInput" style="display: none">
+  <div id="importButton" class="floatingButton" onclick="document.getElementById('fileInput').click()">
+    <i class="fas fa-file-download"></i>
+  </div>
+
+  <div id="map"></div>
+  <div class="panel">
+    <div id="locationsPanel">
+      <div id="addAddressContainer">
+        <h2>Pickup/Dropoff Locations</h2>
+        <button class="addButton" onclick="openLocationPopup(-1)">+ Add Location</button>
+      </div>
+      <div id="addressButtons"></div>
+    </div>
+    <div id="driversPanel">
+      <div id="addDriverContainer">
+        <h2>Drivers</h2>
+        <button class="addButton" onclick="openDriverPopup(-1)">+ Add Driver</button>
+      </div>
+      <div id="driverButtons"></div>
+    </div>
+  </div>
+
+  <div id="locationPopup">
+    <h2 id="locationPopupTitle">Placeholder Title</h2>
+    <form onsubmit="locationPopupSubmit(event)">
+      <label for="locationName">Name:</label>
+      <input type="text" id="locationName" placeholder="Enter a name">
+      <label for="locationAddress">Address:</label>
+      <input type="text" id="locationAddress" placeholder="Enter an address">
+      <label for="locationPeopleCount"># People</label>
+      <input type="text" id="locationPeopleCount" placeholder="# people (optional)">
+      <select id="locationDriverDropdown" name="driverDropdown">
+        <option value="">No Driver</option>
+        <!-- Populate the dropdown with existing drivers -->
+        <!-- You may need to dynamically generate options based on the existing drivers -->
+        <!-- For example, you can loop through the 'drivers' array and create an option for each driver -->
+        <!-- Example loop: -->
+        <!-- drivers.forEach(driver => { -->
+        <!--   <option value="${driver.name}">${driver.name}</option> -->
+        <!-- }); -->
+      </select>
+      <input type="hidden" id="locationIndex" value="-1">
+      <button id="locationPopupSubmitButton" type="submit">Placeholder Button</button>
+    </form>
+    <button onclick="closeAllPopups()">Cancel</button>
+  </div>
+
+  <div id="driverPopup">
+    <h2 id="driverPopupTitle">Placeholder Title</h2>
+    <form onsubmit="driverPopupSubmit(event)">
+      <label for="driverName">Name:</label>
+      <input type="text" id="driverName" placeholder="Enter a name">
+      <label for="driverStartAddress">Start Location:</label>
+      <input type="text" id="driverStartAddress" placeholder="Enter an address">
+      <label for="driverEndAddress">End Location:</label>
+      <input type="text" id="driverEndAddress" placeholder="Enter an address">
+      <label for="driverPeopleCap">Capacity:</label>
+      <input type="text" id="driverPeopleCap" placeholder="# passengers (optional)">
+      <label for="driverVolume">Volume:</label>
+      <input type="text" id="driverVolume" placeholder="trunk space (m^3) (optional)">
+      <input type="hidden" id="driverIndex" value="-1">
+      <button id="driverPopupSubmitButton" type="submit">Placeholder Button</button>
+    </form>
+    <button onclick="closeAllPopups()">Cancel</button>
+  </div>  
+
+  <script>
+    function handleFileSelect(event) {
+      var file = event.target.files[0];
+
+      if (file) {
+        var reader = new FileReader();
+        reader.onload = function (e) {
+          var content = e.target.result;
+          importData(content);
+        };
+        reader.readAsText(file);
+      }
+    }
+    document.getElementById('fileInput').addEventListener('change', handleFileSelect);
+
+    var map = L.map('map').setView([0, 0], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    var storedAddresses = [];
+    var drivers = [];
+
+    function openLocationPopup(index) {
+      index = parseInt(index);
+      closeAllPopups();
+      if (index != -1) {
+        document.getElementById('locationPopupTitle').innerHTML = "Edit Location";
+        document.getElementById('locationPopupSubmitButton').innerHTML = "Save Changes";
+        var address = storedAddresses[index];
+        document.getElementById('locationName').value = address.name || '';
+        document.getElementById('locationAddress').value = address.address;
+        document.getElementById('locationPeopleCount').value = address.peopleCount;
+        if (address.driver == '') {
+            
+        }
+        document.getElementById('locationIndex').value = index;
+        document.getElementById('locationPopup').style.display = 'block';
+      } else {
+        document.getElementById('locationPeopleCount').value = 1;
+        document.getElementById('locationIndex').value = -1;
+        document.getElementById('locationPopupTitle').innerHTML = "Add New Location";
+        document.getElementById('locationPopupSubmitButton').innerHTML = "Add Location";
+      }
+
+      // populate driver dropdown
+      var driverDropdown = document.getElementById('locationDriverDropdown');
+      driverDropdown.innerHTML = '<option value="">No Driver</option>'; // Reset dropdown
+
+      drivers.forEach(driver => {
+        var option = document.createElement('option');
+        option.value = driver.name;
+        option.text = driver.name;
+        driverDropdown.add(option);
+      });
+
+      document.getElementById('locationPopup').style.display = 'block'; 
+    }
+
+    function openDriverPopup(index) {
+      index = parseInt(index);
+      closeAllPopups();
+      if (index != -1) {
+        document.getElementById('driverPopupTitle').innerHTML = "Edit Driver";
+        document.getElementById('driverPopupSubmitButton').innerHTML = "Save Changes";
+        var driver = drivers[index];
+        document.getElementById('driverName').value = driver.name || '';
+        document.getElementById('driverStartAddress').value = driver.startAddress || '';
+        document.getElementById('driverEndAddress').value = driver.endAddress || '';
+        document.getElementById('driverPeopleCap').value = driver.peopleCap || '';
+        document.getElementById('driverVolume').value = driver.volume || '';
+        document.getElementById('driverIndex').value = index;
+      } else {
+        document.getElementById('driverIndex').value = -1;
+        document.getElementById('driverPopupTitle').innerHTML = "Add New Driver";
+        document.getElementById('driverPopupSubmitButton').innerHTML = "Add Driver";
+      }
+      document.getElementById('driverPopup').style.display = 'block'; 
+    }
+
+    function addressRequest(name, address, peopleCount, driver, index=-1) {
+        index = parseInt(index);
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${address}`)
+          .then(response => response.json())
+          .then(data => {
+            if (data.length > 0) {
+              var lat = parseFloat(data[0].lat);
+              var lon = parseFloat(data[0].lon);
+              
+              var newEntry = {
+                name: name,
+                address: address,
+                lat: lat,
+                lon: lon,
+                peopleCount: peopleCount,
+                driver: driver
+              }
+              if (index === -1) {
+                storedAddresses.push(newEntry);
+              } else {
+                storedAddresses[index] = newEntry;
+              }
+              updateStoredAddressesButtons();
+              updateMapMarkers();
+              closeAllPopups();
+              fitMapToBounds();
+            } else {
+              console.error('No results found for the address.');
+              alert('Address not found. Please try again.');
+            }
+          })
+          .catch(error => {
+            console.error('Error:', error);
+            if (index === -1) {
+                alert('Error adding new address. Please try again.');
+            } else {
+                alert('Error editing address. Please try again.');
+            }
+          });
+    }
+
+    function locationPopupSubmit(event) {
+      event.preventDefault();
+      var name = document.getElementById('locationName').value;
+      var address = document.getElementById('locationAddress').value;
+      var peopleCount = document.getElementById('locationPeopleCount').value;
+      var driver = document.getElementById('locationDriverDropdown').value;
+      var driverIndex = document.getElementById('locationDriverDropdown').selectedIndex;
+      if (driverIndex == 0) {
+        driver = '';
+      }
+
+      name = name.replace(/_/g, ' ').trim();
+      address = address.replace(/_/g, ' ').trim();
+      peopleCount = peopleCount.trim() === '' ? 0 : parseInt(peopleCount);
+      driver = driver.replace(/_/g, ' ').trim();
+
+      var duplicatedName = false;
+      storedAddresses.forEach((address, index) => {
+        if (address.name == name) {
+            duplicatedName = true;
+        }
+      });
+
+      var selectedIndex = document.getElementById('locationIndex').value;
+      if (duplicatedName && selectedIndex == -1) {
+        alert('Location with the same name exists already.');
+      } else if (name.trim() !== '' && address.trim() !== '') {
+        addressRequest(name, address, peopleCount, driver, selectedIndex);
+      } else {
+        alert('Name and address are required.');
+      }
+    }
+
+    function driverRequest(name, startAddr, endAddr, peopleCap, volume, index=-1) {
+        index = parseInt(index);
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${startAddr}`)
+            .then(response => response.json())
+            .then(startData => {
+                if (startData.length > 0) {
+                    var startLat = parseFloat(startData[0].lat);
+                    var startLong = parseFloat(startData[0].lon);
+                    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${endAddr}`)
+                        .then(response => response.json())
+                        .then(endData => {
+                            if (endData.length > 0) {
+                                var endLat = parseFloat(endData[0].lat);
+                                var endLong = parseFloat(endData[0].lon);
+                                
+                                var newDriver = {
+                                    name: name,
+                                    startAddress: startAddr,
+                                    endAddress: endAddr,
+                                    startLat: startLat,
+                                    startLong: startLong,
+                                    endLat: endLat,
+                                    endLong: endLong,
+                                    peopleCap: peopleCap,
+                                    volume: volume
+                                };
+
+                                if (index === -1) {
+                                    drivers.push(newDriver);
+                                } else {
+                                    drivers[index] = newDriver;
+                                }
+                                updateDriverButtons();
+                                updateMapMarkers();
+                                closeAllPopups();
+                                fitMapToBounds();
+                            } else {
+                                console.error('No results found for the end address.');
+                                alert('End address not found. Please try again.');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            alert('Error adding new driver. Please try again.');
+                        });
+                } else {
+                    console.error('No results found for the start address.');
+                    alert('Start address not found. Please try again.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error adding new driver. Please try again.');
+            });
+    }
+
+    function driverPopupSubmit(event) {
+      event.preventDefault();
+      var driverName = document.getElementById('driverName').value;
+      var driverStartAddress = document.getElementById('driverStartAddress').value;
+      var driverEndAddress = document.getElementById('driverEndAddress').value;
+      var driverPeopleCap = document.getElementById('driverPeopleCap').value;
+      var driverVolume = document.getElementById('driverVolume').value;
+
+      driverName = driverName.replace(/_/g, ' ').trim();
+      driverStartAddress = driverStartAddress.replace(/_/g, ' ').trim();
+      driverEndAddress = driverEndAddress.replace(/_/g, ' ').trim();
+      driverPeopleCap = parseInt(driverPeopleCap);
+      driverVolume = parseFloat(driverVolume);
+
+      var duplicatedName = false;
+      drivers.forEach((driver, index) => {
+        if (driver.name == driverName) {
+            duplicatedName = true;
+        }
+      });
+
+      var selectedIndex = document.getElementById('driverIndex').value;
+      if (duplicatedName && selectedIndex == -1) {
+        alert("Driver with the same name exists already.");
+      } else if (driverName.trim() !== '' && driverStartAddress.trim() !== '' && driverEndAddress.trim() !== '') {
+        driverRequest(driverName, driverStartAddress, driverEndAddress, driverPeopleCap, driverVolume, selectedIndex);
+      } else {
+        alert('Need driver name and start/end addresses. Please try again.');
+      }
+    }
+
+    var addressMarkers = [];
+    var driverMarkers = [];
+
+    function updateStoredAddressesButtons() {
+        var addressButtonsContainer = document.getElementById('addressButtons');
+        addressButtonsContainer.innerHTML = '';
+
+        storedAddresses.forEach((address, index) => {
+            var buttonContainer = document.createElement('div');
+            buttonContainer.className = 'addressButton';
+
+            var addressText = document.createElement('span');
+            addressText.innerHTML = `<span>${address.name ? `<strong>${address.name}</strong>` : ''}</span>`;
+            buttonContainer.appendChild(addressText);
+
+            var deleteButton = document.createElement('div');
+            deleteButton.className = 'deleteButton';
+            deleteButton.innerHTML = '<i class="fas fa-trash-alt"></i>';
+            // Add an onclick event for the delete button (you can handle deletion logic here)
+            deleteButton.onclick = function(event) { deleteAddress(index, event); };
+            buttonContainer.appendChild(deleteButton);
+
+            var editButton = document.createElement('div');
+            editButton.className = 'editButton';
+            editButton.innerHTML = '<i class="fas fa-edit"></i>';
+            editButton.onclick = function(event) { 
+                var marker = addressMarkers[index];
+                if (marker) {
+                    map.panTo(marker.getLatLng());
+                }
+                openLocationPopup(index, event); 
+            };
+            buttonContainer.appendChild(editButton);
+
+            // Add a click event to center the map on the corresponding map marker and display the marker's tooltip/info
+            buttonContainer.onclick = function(event) {
+                if (!event.target.closest('.deleteButton') && !event.target.closest('.editButton')) {
+                    closeAllPopups();
+                    // Retrieve the corresponding marker from the array
+                    var marker = addressMarkers[index];
+                    if (marker) {
+                        // Open the popup associated with the marker
+                        marker.openPopup();
+                        
+                        // Center the map on the marker's position
+                        map.panTo(marker.getLatLng());
+                    }
+                }
+                event.stopPropagation(); // Stop propagation to prevent it from reaching the map click event
+            };
+
+            addressButtonsContainer.appendChild(buttonContainer);
+        });
+    }
+
+    function updateDriverButtons() {
+        var driverContainer = document.getElementById('driverButtons');
+        driverContainer.innerHTML = '';
+
+        drivers.forEach((driver, index) => {
+            var buttonContainer = document.createElement('div');
+            buttonContainer.className = 'driverButton';
+
+            var driverText = document.createElement('span');
+            driverText.innerHTML = `<span>${driver.name ? `<strong>${driver.name}</strong>` : ''}</span>`;
+            buttonContainer.appendChild(driverText);
+
+            var deleteButton = document.createElement('div');
+            deleteButton.className = 'deleteButton';
+            deleteButton.innerHTML = '<i class="fas fa-trash-alt"></i>';
+            // Add an onclick event for the delete button (you can handle deletion logic here)
+            deleteButton.onclick = function(event) { deleteDriver(index, event); };
+            buttonContainer.appendChild(deleteButton);
+
+            var editButton = document.createElement('div');
+            editButton.className = 'editButton';
+            editButton.innerHTML = '<i class="fas fa-edit"></i>';
+            editButton.onclick = function(event) { 
+                var startMarker = driverMarkers[index * 2];
+                if (startMarker) {
+                    map.panTo(startMarker.getLatLng());
+                }
+                openDriverPopup(index, event) 
+            };
+            buttonContainer.appendChild(editButton);
+
+            // Add a click event to center the map on the corresponding map marker and display the marker's tooltip/info
+            buttonContainer.onclick = function(event) {
+                if (!event.target.closest('.deleteButton') && !event.target.closest('.editButton')) {
+                    closeAllPopups();
+                    // Retrieve the corresponding marker from the array
+                    var startMarker = driverMarkers[index * 2];
+                    if (startMarker) {
+                        // Open the popup associated with the marker
+                        startMarker.openPopup();
+                        
+                        // Center the map on the marker's position
+                        map.panTo(startMarker.getLatLng());
+                    }
+                }
+                event.stopPropagation(); // Stop propagation to prevent it from reaching the map click event
+            };
+
+            driverContainer.appendChild(buttonContainer);
+        });
+    }
+
+    function updateMapMarkers() {
+        map.eachLayer(layer => {
+            if (layer instanceof L.Marker) {
+                map.removeLayer(layer);
+            }
+        });
+        addressMarkers = []; // Reset the markers array
+        var genericMarkerIcon = L.divIcon({
+            className: 'custom-generic-marker',
+            html: '<div class="marker-dot"></div>'
+        });
+        storedAddresses.forEach(address => {
+            var marker = L.marker(
+                [address.lat, address.lon],
+                {icon: genericMarkerIcon}
+            ).addTo(map);
+            marker.bindPopup(`<strong>${address.name ? address.name + '<br>' : ''}</strong>${address.address}<br>People: ${address.peopleCount}<br>Coordinates: ${address.lat}, ${address.lon}`);
+            
+            // Store the marker in the array
+            addressMarkers.push(marker);
+        });
+
+        driverMarkers = []; // Reset the markers array
+        var startMarkerIcon = L.divIcon({
+            className: 'custom-start-marker',
+            html: '<div class="marker-dot"></div>'
+        });
+        var endMarkerIcon = L.divIcon({
+            className: 'custom-end-marker',
+            html: '<div class="marker-dot"></div>'
+        });
+        drivers.forEach(driver => {
+            var startMarker = L.marker(
+                [driver.startLat, driver.startLong],
+                {icon: startMarkerIcon}
+            ).addTo(map);
+            startMarker.bindPopup(`<strong>[start] ${driver.name ? driver.name + '<br>' : ''}</strong>${driver.startAddress}<br>Coordinates: ${driver.startLat}, ${driver.startLong}`);
+            var endMarker = L.marker(
+                [driver.endLat, driver.endLong],
+                {icon: endMarkerIcon}
+            ).addTo(map);
+            endMarker.bindPopup(`<strong>[end] ${driver.name ? driver.name + '<br>' : ''}</strong>${driver.endAddress}<br>Coordinates: ${driver.endLat}, ${driver.endLong}`);
+            // Store the marker in the array
+            driverMarkers.push(startMarker);
+            driverMarkers.push(endMarker);
+        });
+    }
+
+    function fitMapToBounds() {
+      var bounds = L.latLngBounds();
+
+      storedAddresses.forEach(address => {
+        bounds.extend([address.lat, address.lon]);
+      });
+      drivers.forEach(driver => {
+        bounds.extend([driver.startLat, driver.startLong]);
+        bounds.extend([driver.endLat, driver.endLong]);
+      })
+
+      map.fitBounds(bounds);
+    }
+
+    function deleteAddress(index) {
+        // Remove the address at the specified index from the storedAddresses array
+        storedAddresses.splice(index, 1);
+        
+        // Update the stored addresses buttons and map markers
+        updateStoredAddressesButtons();
+        updateMapMarkers();
+    }
+
+    function deleteDriver(index) {
+        // Remove the driver at the specified index from the drivers array
+        drivers.splice(index, 1);
+        
+        // Update the driver buttons and map markers
+        updateDriverButtons();
+        updateMapMarkers();
+    }
+
+    function closeAllPopups() {
+        document.getElementById('locationPopup').style.display = 'none';
+        document.getElementById('driverPopup').style.display = 'none';
+        clearPopupFields();
+    }
+
+    function clearPopupFields() {
+        // location popup:
+        document.getElementById('locationName').value = '';
+        document.getElementById('locationAddress').value = '';
+        document.getElementById('locationPeopleCount').value = '';
+
+        // driver popup:
+        document.getElementById('driverName').value = '';
+        document.getElementById('driverStartAddress').value = '';
+        document.getElementById('driverEndAddress').value = '';
+        document.getElementById('driverPeopleCap').value = '';
+        document.getElementById('driverVolume').value = '';
+    }
+
+    function exportData() {
+        var data = [];
+        data.push(storedAddresses.length);
+
+        storedAddresses.forEach(address => {
+            var locationData = `${address.name.replace(/ /g, '_')} ${address.address.replace(/ /g, '_')} ${address.lat} ${address.lon} ${address.peopleCount}`;
+            data.push(locationData);
+        });
+
+        data.push(drivers.length);
+
+        drivers.forEach(driver => {
+            var driverData = `${driver.name.replace(/ /g, '_')} ${driver.startAddress.replace(/ /g, '_')} ${driver.endAddress.replace(/ /g, '_')} ${driver.startLat} ${driver.startLong} ${driver.endLat} ${driver.endLong} ${driver.peopleCap} ${driver.volume}`;
+            data.push(driverData);
+        });
+
+        var blob = new Blob([data.join('\n')], { type: 'text/plain' });
+        var url = window.URL.createObjectURL(blob);
+
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'transport_data.txt';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    }
+
+    function importData(content) {
+        var contents = content.split('\n');
+
+        storedAddresses = [];
+        var numLocations = parseInt(contents[0]);
+
+        for (let i = 1; i <= numLocations; i++) {
+            var locationData = contents[i].split(' ');
+            var name = locationData[0].replace(/_/g, ' ');
+            var address = locationData[1].replace(/_/g, ' ');
+            var lat = parseFloat(locationData[2]);
+            var lon = parseFloat(locationData[3]);
+            var peopleCount = parseInt(locationData[4]);
+
+            storedAddresses.push({
+                name: name,
+                address: address,
+                lat: lat,
+                lon: lon,
+                peopleCount: peopleCount
+            });
+        }
+
+        drivers = [];
+        var numDrivers = parseInt(contents[numLocations + 1]);
+
+        for (let i = numLocations + 2; i < numLocations + 2 + numDrivers; i++) {
+            var driverData = contents[i].split(' ');
+            var name = driverData[0].replace(/_/g, ' ');
+            var startAddress = driverData[1].replace(/_/g, ' ');
+            var endAddress = driverData[2].replace(/_/g, ' ');
+            var startLat = parseFloat(driverData[3]);
+            var startLong = parseFloat(driverData[4]);
+            var endLat = parseFloat(driverData[5]);
+            var endLong = parseFloat(driverData[6]);
+            var peopleCap = parseInt(driverData[7]);
+            var volume = parseFloat(driverData[8]);
+
+            drivers.push({
+                name: name,
+                startAddress: startAddress,
+                endAddress: endAddress,
+                startLat: startLat,
+                startLong: startLong,
+                endLat: endLat,
+                endLong: endLong,
+                peopleCap: peopleCap,
+                volume: volume
+            });
+        }
+
+        updateStoredAddressesButtons();
+        updateDriverButtons();
+        updateMapMarkers();
+        fitMapToBounds();
+    }
+
+    function clickOutsidePopup(event) {
+        var locationPopup = document.getElementById('locationPopup');
+        var driverPopup = document.getElementById('driverPopup');
+
+        if (!event.target.closest('.addButton') && !event.target.closest('#locationPopup') && !event.target.closest('#driverPopup')) {
+            closeAllPopups();
+        }
+    }
+    document.body.addEventListener('click', clickOutsidePopup);
+
+  </script>
+
+</body>
+</html>

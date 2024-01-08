@@ -23,11 +23,17 @@ int main() {
 
     // load map (graph info) and problem (deliveries, trucks info)
     Util util(g.get(), solver.get());
+
+    util.readRealMap();
+    util.readRealProblem();
+
+    // testing with fake map and fake problem
     util.readFakeMap();
     util.readFakeProblem();
     solver->solve();
 
 
+    // TODO: remove all under this when done
     Node* n1 = new Node(-1, 0, 0);
     Node* n2 = new Node(-2, 0, 0);
     Node* n3 = new Node(-3, 0, 0);
